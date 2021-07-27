@@ -10139,6 +10139,25 @@ process.hltTrigReport = cms.EDAnalyzer( "HLTrigReport",
     ReferenceRate = cms.untracked.double( 100.0 )
 )
 
+
+process.prunedGenParticles = cms.EDProducer('GenParticlePruner',
+    src = cms.InputTag('genParticles'),
+    select = cms.vstring(
+        'keep  *', # this is the default
+        # '++keep abs(pdgId) == 11 || abs(pdgId) == 13 || abs(pdgId) == 15', # keep leptons, with history
+        # 'keep abs(pdgId) == 12 || abs(pdgId) == 14 || abs(pdgId) == 16',   # keep neutrinos
+        # 'drop   status == 2',                                              # drop the shower part of the history
+        # '+keep pdgId == 22 && status == 1 && (pt > 10 || isPromptFinalState())', # keep gamma above 10 GeV (or all prompt) and its first parent
+        # '+keep abs(pdgId) == 11 && status == 1 && (pt > 3 || isPromptFinalState())', # keep first parent of electrons above 3 GeV (or prompt)
+        # 'keep++ abs(pdgId) == 15',                                         # but keep keep taus with decays
+	      # 'drop  status > 30 && status < 70 ', 				   #remove pythia8 garbage
+	      # 'drop  pdgId == 21 && pt < 5',                                    #remove pythia8 garbage
+        # 'drop   status == 2 && abs(pdgId) == 21',                          # but remove again gluons in the inheritance chain
+        # 'keep status == 3 || ( 21 <= status <= 29) || ( 11 <= status <= 19)',  #keep event summary (status=3 for pythia6, 21 <= status <= 29 for pythia8)
+        # 'keep isHardProcess() || fromHardProcessFinalState() || fromHardProcessDecayed() || fromHardProcessBeforeFSR() || (statusFlags().fromHardProcess() && statusFlags().isLastCopy())',  #keep event summary based on status flags
+    )
+)
+
 process.HLTL1UnpackerSequence = cms.Sequence( process.hltGtStage2Digis + process.hltGtStage2ObjectMap )
 process.HLTBeamSpot = cms.Sequence( process.hltScalersRawToDigi + process.hltOnlineBeamSpot )
 process.HLTBeginSequence = cms.Sequence( process.hltTriggerType + process.HLTL1UnpackerSequence + process.HLTBeamSpot )
@@ -10169,12 +10188,14 @@ process.HLTEle32WPTightGsfSequence = cms.Sequence( process.HLTDoFullUnpackingEga
 process.HLTEndSequence = cms.Sequence( process.hltBoolEnd )
 
 process.HLTriggerFirstPath = cms.Path( process.hltGetConditions + process.hltGetRaw + process.hltPSetMap + process.hltBoolFalse )
+process.GenParticleProducer = cms.Sequence(process.prunedGenParticles)
+process.GenParticles = cms.Path( process.GenParticleProducer)
 process.HLT_Ele32_WPTight_Gsf_v15 = cms.Path( process.HLTBeginSequence + process.hltL1sSingleEGor + process.hltPreEle32WPTightGsf + process.HLTEle32WPTightGsfSequence + process.HLTEndSequence )
 process.HLTriggerFinalPath = cms.Path( process.hltGtStage2Digis + process.hltScalersRawToDigi + process.hltFEDSelector + process.hltTriggerSummaryAOD + process.hltTriggerSummaryRAW + process.hltBoolFalse )
 process.HLTAnalyzerEndpath = cms.EndPath( process.hltGtStage2Digis + process.hltPreHLTAnalyzerEndpath + process.hltL1TGlobalSummary + process.hltTrigReport )
 
 
-process.HLTSchedule = cms.Schedule( *(process.HLTriggerFirstPath, process.HLT_Ele32_WPTight_Gsf_v15, process.HLTriggerFinalPath, process.HLTAnalyzerEndpath ))
+process.HLTSchedule = cms.Schedule( *(process.HLTriggerFirstPath, process.GenParticles, process.HLT_Ele32_WPTight_Gsf_v15, process.HLTriggerFinalPath, process.HLTAnalyzerEndpath ))
 
 
 process.source = cms.Source( "PoolSource",
