@@ -10238,6 +10238,12 @@ process.source = cms.Source( "PoolSource",
     )
 )
 
+process.TFileService = cms.Service("TFileService",
+      fileName = cms.string("./output/outputAnalyzer.root"),
+      closeFileFast = cms.untracked.bool(True)
+  )
+
+
 # add a single "keep *" output
 process.hltOutputFull = cms.OutputModule( "PoolOutputModule",
     fileName = cms.untracked.string( "output.root" ),
